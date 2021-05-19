@@ -8,6 +8,7 @@ target 'notificacionesPush' do
   # Pods for notificacionesPush
 
   # add the Firebase pod for Google Analytics
+	pod 'Firebase'
 	pod 'Firebase/Analytics'
   # or pod ‘Firebase/AnalyticsWithoutAdIdSupport’
   # for Analytics without IDFA collection capability

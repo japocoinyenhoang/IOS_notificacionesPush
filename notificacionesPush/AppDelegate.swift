@@ -11,6 +11,8 @@ import Firebase
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
+    var window: UIWindow?
+    let gcmMessageIDKey = "gcm.message_id"
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
@@ -18,7 +20,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         FirebaseApp.configure()
         
         //FUNCION para obtener la autorizacion del usuario
-        getPushNotificaciones()
+        //getPushNotificaciones()
+        
+        // [START set_messaging_delegate]
+           Messaging.messaging().delegate = self
+           // [END set_messaging_delegate]
+        
+        if #available(iOS 10.0, *) {
+          // For iOS 10 display notification (sent via APNS)
+          UNUserNotificationCenter.current().delegate = self
+
+          let authOptions: UNAuthorizationOptions = [.alert, .badge, .sound]
+          UNUserNotificationCenter.current().requestAuthorization(
+            options: authOptions,
+            completionHandler: {_, _ in })
+        } else {
+          let settings: UIUserNotificationSettings =
+          UIUserNotificationSettings(types: [.alert, .badge, .sound], categories: nil)
+          application.registerUserNotificationSettings(settings)
+        }
+
+        application.registerForRemoteNotifications()
+
+        
         return true
     }
 
@@ -59,7 +83,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { (acceso, error) in
             if acceso {
                 DispatchQueue.main.async {
-                    UIApplication.shared.isRegisteredForRemoteNotifications
+                    UIApplication.shared.registerForRemoteNotifications()
                 }
             }
         }
@@ -67,3 +91,60 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
 }
 
+@available(iOS 10, *)
+extension AppDelegate : UNUserNotificationCenterDelegate {
+
+  // Receive displayed notifications for iOS 10 devices.
+  func userNotificationCenter(_ center: UNUserNotificationCenter,
+                              willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+    let userInfo = notification.request.content.userInfo
+
+    // With swizzling disabled you must let Messaging know about the message, for Analytics
+    // Messaging.messaging().appDidReceiveMessage(userInfo)
+    // [START_EXCLUDE]
+    // Print message ID.
+    if let messageID = userInfo[gcmMessageIDKey] {
+      print("Message ID: \(messageID)")
+    }
+    // [END_EXCLUDE]
+    // Print full message.
+    print(userInfo)
+
+    // Change this to your preferred presentation option
+    completionHandler([[.banner, .sound]])
+  }
+
+  func userNotificationCenter(_ center: UNUserNotificationCenter,
+                              didReceive response: UNNotificationResponse,
+                              withCompletionHandler completionHandler: @escaping () -> Void) {
+    let userInfo = response.notification.request.content.userInfo
+
+    // [START_EXCLUDE]
+    // Print message ID.
+    if let messageID = userInfo[gcmMessageIDKey] {
+      print("Message ID: \(messageID)")
+    }
+    // [END_EXCLUDE]
+    // With swizzling disabled you must let Messaging know about the message, for Analytics
+    // Messaging.messaging().appDidReceiveMessage(userInfo)
+    // Print full message.
+    print(userInfo)
+
+    completionHandler()
+  }
+}
+// [END ios_10_message_handling]
+
+extension AppDelegate : MessagingDelegate {
+  // [START refresh_token]
+  func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+    print("Firebase registration token: \(String(describing: fcmToken))")
+    
+    let dataDict:[String: String] = ["token": fcmToken ?? ""]
+    NotificationCenter.default.post(name: Notification.Name("FCMToken"), object: nil, userInfo: dataDict)
+    // TODO: If necessary send token to application server.
+    // Note: This callback is fired at each app startup and whenever a new token is generated.
+  }
+  // [END refresh_token]
+}
