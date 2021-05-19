@@ -16,6 +16,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
         FirebaseApp.configure()
+        
+        //FUNCION para obtener la autorizacion del usuario
+        getPushNotificaciones()
         return true
     }
 
@@ -33,6 +36,34 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Use this method to release any resources that were specific to the discarded scenes, as they will not return.
     }
 
+    func getPushNotificaciones(){
+        //para pedir el permiso tengo que llamar al UserNotificationCenter
+        UNUserNotificationCenter.current().getNotificationSettings{
+            (settings) in
+            switch settings.authorizationStatus {
+            case .notDetermined:
+                self.autorizarNotificaciones()
+            case .authorized:
+                DispatchQueue.main.async {
+                    UIApplication.shared.registerForRemoteNotifications()
+                }
+            case .denied:
+                print("Permiso Denegado")
+            default:
+                break
+            }
+        }
+    }
+    
+    func autorizarNotificaciones () {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { (acceso, error) in
+            if acceso {
+                DispatchQueue.main.async {
+                    UIApplication.shared.isRegisteredForRemoteNotifications
+                }
+            }
+        }
+    }
 
 }
 
